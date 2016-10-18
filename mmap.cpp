@@ -9,6 +9,50 @@ struct hint_wrap {
 	size_t length;
 };
 
+#if (NODE_MODULE_VERSION > 48)
+  // The two methods below were copied from
+  // https://github.com/electron/electron?branch=master&filepath=atom/common/api/atom_api_v8_util.cc
+  // Copyright (c) 2013 GitHub, Inc.
+  // Use of this source code is governed by the MIT license.
+
+  v8::Local<v8::Value> GetHiddenValue(v8::Isolate* isolate,
+                                      v8::Local<v8::Object> object,
+                                      v8::Local<v8::String> key) {
+    v8::Local<v8::Context> context = isolate->GetCurrentContext();
+    v8::Local<v8::Private> privateKey = v8::Private::ForApi(isolate, key);
+    v8::Local<v8::Value> value;
+    v8::Maybe<bool> result = object->HasPrivate(context, privateKey);
+    if (!(result.IsJust() && result.FromJust()))
+      return v8::Local<v8::Value>();
+    if (object->GetPrivate(context, privateKey).ToLocal(&value))
+      return value;
+    return v8::Local<v8::Value>();
+  }
+
+  void SetHiddenValue(v8::Isolate* isolate,
+                      v8::Local<v8::Object> object,
+                      v8::Local<v8::String> key,
+                      v8::Local<v8::Value> value) {
+    if (value.IsEmpty())
+      return;
+    v8::Local<v8::Context> context = isolate->GetCurrentContext();
+    v8::Local<v8::Private> privateKey = v8::Private::ForApi(isolate, key);
+    object->SetPrivate(context, privateKey, value);
+  }
+#else
+  v8::Local<v8::Value> GetHiddenValue(v8::Isolate* isolate,
+                                      v8::Local<v8::Object> object,
+                                      v8::Local<v8::String> key) {
+    return object->GetHiddenValue(key);
+  }
+
+  void SetHiddenValue(v8::Isolate* isolate,
+                      v8::Local<v8::Object> object,
+                      v8::Local<v8::String> key,
+                      v8::Local<v8::Value> value) {
+    object->SetHiddenValue(key, value);
+  }
+#endif
 
 static void Map_finalise(char *data, void*hint_void)
 {
@@ -59,7 +103,7 @@ void Unmap(const v8::FunctionCallbackInfo<v8::Value>& args)
 	auto buffer = args.This()->ToObject();
 	char *data = node::Buffer::Data(buffer);
 
-	struct hint_wrap *d = (struct hint_wrap *)v8::External::Cast(*buffer->GetHiddenValue(v8::String::NewFromUtf8(isolate,"mmap_dptr")))->Value();
+	struct hint_wrap *d = (struct hint_wrap *)v8::External::Cast(*GetHiddenValue(isolate, buffer, v8::String::NewFromUtf8(isolate,"mmap_dptr")))->Value();
 
 	bool ok = true;
 
@@ -109,7 +153,7 @@ void Map(const v8::FunctionCallbackInfo<v8::Value>& args)
 
 	buffer_object->Set(v8::String::NewFromUtf8(isolate, "unmap"), v8::FunctionTemplate::New(isolate, Unmap)->GetFunction());
 	buffer_object->Set(v8::String::NewFromUtf8(isolate, "sync"), v8::FunctionTemplate::New(isolate, Sync)->GetFunction());
-	buffer_object->SetHiddenValue(v8::String::NewFromUtf8(isolate,"mmap_dptr"), v8::External::New(isolate, (void*)d));
+	SetHiddenValue(isolate, buffer_object, v8::String::NewFromUtf8(isolate,"mmap_dptr"), v8::External::New(isolate, (void*)d));
 
 	args.GetReturnValue().Set(buffer);
 }
