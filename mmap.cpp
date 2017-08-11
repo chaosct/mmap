@@ -9,7 +9,7 @@ struct hint_wrap {
 	size_t length;
 };
 
-#if (NODE_MODULE_VERSION > 48)
+#if (1)
   // The two methods below were copied from
   // https://github.com/electron/electron?branch=master&filepath=atom/common/api/atom_api_v8_util.cc
   // Copyright (c) 2013 GitHub, Inc.
