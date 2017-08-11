@@ -9,50 +9,35 @@ struct hint_wrap {
 	size_t length;
 };
 
-#if (NODE_MODULE_VERSION > 48)
-  // The two methods below were copied from
-  // https://github.com/electron/electron?branch=master&filepath=atom/common/api/atom_api_v8_util.cc
-  // Copyright (c) 2013 GitHub, Inc.
-  // Use of this source code is governed by the MIT license.
+// The two methods below were copied from
+// https://github.com/electron/electron?branch=master&filepath=atom/common/api/atom_api_v8_util.cc
+// Copyright (c) 2013 GitHub, Inc.
+// Use of this source code is governed by the MIT license.
 
-  v8::Local<v8::Value> GetHiddenValue(v8::Isolate* isolate,
-                                      v8::Local<v8::Object> object,
-                                      v8::Local<v8::String> key) {
-    v8::Local<v8::Context> context = isolate->GetCurrentContext();
-    v8::Local<v8::Private> privateKey = v8::Private::ForApi(isolate, key);
-    v8::Local<v8::Value> value;
-    v8::Maybe<bool> result = object->HasPrivate(context, privateKey);
-    if (!(result.IsJust() && result.FromJust()))
-      return v8::Local<v8::Value>();
-    if (object->GetPrivate(context, privateKey).ToLocal(&value))
-      return value;
-    return v8::Local<v8::Value>();
-  }
+v8::Local<v8::Value> GetHiddenValue(v8::Isolate* isolate,
+			      v8::Local<v8::Object> object,
+			      v8::Local<v8::String> key) {
+	v8::Local<v8::Context> context = isolate->GetCurrentContext();
+	v8::Local<v8::Private> privateKey = v8::Private::ForApi(isolate, key);
+	v8::Local<v8::Value> value;
+	v8::Maybe<bool> result = object->HasPrivate(context, privateKey);
+	if (!(result.IsJust() && result.FromJust()))
+		return v8::Local<v8::Value>();
+	if (object->GetPrivate(context, privateKey).ToLocal(&value))
+		return value;
+	return v8::Local<v8::Value>();
+}
 
-  void SetHiddenValue(v8::Isolate* isolate,
-                      v8::Local<v8::Object> object,
-                      v8::Local<v8::String> key,
-                      v8::Local<v8::Value> value) {
-    if (value.IsEmpty())
-      return;
-    v8::Local<v8::Context> context = isolate->GetCurrentContext();
-    v8::Local<v8::Private> privateKey = v8::Private::ForApi(isolate, key);
-    object->SetPrivate(context, privateKey, value);
-  }
-#else
-  v8::Local<v8::Value> GetHiddenValue(v8::Isolate* isolate,
-                                      v8::Local<v8::Object> object,
-                                      v8::Local<v8::String> key) {
-    return object->GetHiddenValue(key);
-  }
-
-  void SetHiddenValue(v8::Isolate* isolate,
-                      v8::Local<v8::Object> object,
-                      v8::Local<v8::String> key,
-                      v8::Local<v8::Value> value) {
-    object->SetHiddenValue(key, value);
-  }
-#endif
+void SetHiddenValue(v8::Isolate* isolate,
+	      v8::Local<v8::Object> object,
+	      v8::Local<v8::String> key,
+	      v8::Local<v8::Value> value) {
+	if (value.IsEmpty())
+		return;
+	v8::Local<v8::Context> context = isolate->GetCurrentContext();
+	v8::Local<v8::Private> privateKey = v8::Private::ForApi(isolate, key);
+	object->SetPrivate(context, privateKey, value);
+}
 
 static void Map_finalise(char *data, void*hint_void)
 {
