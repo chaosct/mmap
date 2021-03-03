@@ -52,13 +52,14 @@ static void Map_finalise(char *data, void*hint_void)
 void Sync(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
 	auto *isolate = args.GetIsolate();
-	auto buffer = args.This()->ToObject();
+	auto context = isolate->GetCurrentContext();
+	auto buffer = args.This()->ToObject(context).ToLocalChecked();
 	char *data = node::Buffer::Data(buffer);
 	size_t length = node::Buffer::Length(buffer);
 
 	// First optional argument: offset
 	if (args.Length() > 0) {
-		const size_t offset = args[0]->ToInteger()->Value();
+		const size_t offset = args[0]->ToInteger(isolate)->Value();
 		if(length <= offset) return;
 
 		data += offset;
@@ -67,14 +68,14 @@ void Sync(const v8::FunctionCallbackInfo<v8::Value>& args)
 
 	// Second optional argument: length
 	if (args.Length() > 1) {
-		const size_t range = args[1]->ToInteger()->Value();
+		const size_t range = args[1]->ToInteger(isolate)->Value();
 		if(range < length) length = range;
 	}
 
 	// Third optional argument: flags
 	int flags;
 	if (args.Length() > 2) {
-		flags = args[2]->ToInteger()->Value();
+		flags = args[2]->ToInteger(isolate)->Value();
 	} else {
 		flags = MS_SYNC;
 	}
@@ -85,7 +86,8 @@ void Sync(const v8::FunctionCallbackInfo<v8::Value>& args)
 void Unmap(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
 	auto *isolate = args.GetIsolate();
-	auto buffer = args.This()->ToObject();
+	v8::Local<v8::Context> context = isolate->GetCurrentContext();
+	auto buffer = args.This()->ToObject(context).ToLocalChecked();
 	char *data = node::Buffer::Data(buffer);
 
 	struct hint_wrap *d = (struct hint_wrap *)v8::External::Cast(*GetHiddenValue(isolate, buffer, v8::String::NewFromUtf8(isolate,"mmap_dptr")))->Value();
@@ -107,6 +109,7 @@ void Unmap(const v8::FunctionCallbackInfo<v8::Value>& args)
 void Map(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
 	auto *isolate = args.GetIsolate();
+	v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
 	if (args.Length() <= 3)
 	{
@@ -116,11 +119,11 @@ void Map(const v8::FunctionCallbackInfo<v8::Value>& args)
 		return;
 	}
 
-	const size_t length  = args[0]->ToInteger()->Value();
-	const int protection = args[1]->ToInteger()->Value();
-	const int flags      = args[2]->ToInteger()->Value();
-	const int fd         = args[3]->ToInteger()->Value();
-	const off_t offset   = args[4]->ToInteger()->Value();
+	const size_t length  = args[0]->ToInteger(isolate)->Value();
+	const int protection = args[1]->ToInteger(isolate)->Value();
+	const int flags      = args[2]->ToInteger(isolate)->Value();
+	const int fd         = args[3]->ToInteger(isolate)->Value();
+	const off_t offset   = args[4]->ToInteger(isolate)->Value();
 
 	char* data = (char *) mmap(0, length, protection, flags, fd, offset);
 
@@ -134,10 +137,10 @@ void Map(const v8::FunctionCallbackInfo<v8::Value>& args)
 	d->length = length;
 
 	auto buffer = node::Buffer::New(isolate, data, length, Map_finalise, (void*)d).ToLocalChecked();
-	auto buffer_object = buffer->ToObject();
+	auto buffer_object = buffer->ToObject(context).ToLocalChecked();
 
-	buffer_object->Set(v8::String::NewFromUtf8(isolate, "unmap"), v8::FunctionTemplate::New(isolate, Unmap)->GetFunction());
-	buffer_object->Set(v8::String::NewFromUtf8(isolate, "sync"), v8::FunctionTemplate::New(isolate, Sync)->GetFunction());
+	buffer_object->Set(v8::String::NewFromUtf8(isolate, "unmap"), v8::FunctionTemplate::New(isolate, Unmap)->GetFunction(context).ToLocalChecked());
+	buffer_object->Set(v8::String::NewFromUtf8(isolate, "sync"), v8::FunctionTemplate::New(isolate, Sync)->GetFunction(context).ToLocalChecked());
 	SetHiddenValue(isolate, buffer_object, v8::String::NewFromUtf8(isolate,"mmap_dptr"), v8::External::New(isolate, (void*)d));
 
 	args.GetReturnValue().Set(buffer);

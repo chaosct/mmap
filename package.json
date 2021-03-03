@@ -3,7 +3,7 @@
     "description": "mmap() fds into buffers",
     "license": "BSD",
     "version": "3.0.0",
-    "engines":{"node": "5.x.x"},
+    "engines":{"node": "12.x.x"},
     "main": "./index.js",
     "repository": { "type": "git", "url": "https://github.com/geocar/mmap.git" },
     "scripts": { 
